@@ -39,6 +39,31 @@ This project packages OpenClaw to run in a [Cloudflare Sandbox](https://develope
 
 _Cloudflare Sandboxes are available on the [Workers Paid plan](https://dash.cloudflare.com/?to=/:account/workers/plans)._
 
+### Option A: Automated Setup (Recommended)
+
+```bash
+npm install
+
+# Interactive wizard — walks you through AI provider, R2, and channels
+npm run wizard
+
+# Or use the bash script instead
+npm run setup
+```
+
+The wizard/script will:
+- Detect your Cloudflare account
+- Prompt for your AI provider (Anthropic key or AI Gateway)
+- Generate a gateway token
+- Optionally create an R2 bucket and configure persistent storage
+- Optionally configure chat channels (Telegram, Discord, Slack)
+- Upload all secrets in one batch via `wrangler secret bulk`
+- Offer to deploy
+
+Use `npm run setup:minimal` to skip optional steps and only set up an API key + gateway token.
+
+### Option B: Manual Setup
+
 ```bash
 # Install dependencies
 npm install
