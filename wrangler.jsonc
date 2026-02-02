@@ -80,6 +80,7 @@
   //
   // Required (one of):
   //   ANTHROPIC_API_KEY         — Direct Anthropic API key
+  //   ANTHROPIC_OAUTH_TOKEN     — Claude Pro/Max subscription token (from `claude setup-token`)
   //   AI_GATEWAY_API_KEY +
   //   AI_GATEWAY_BASE_URL       — Cloudflare AI Gateway
   //

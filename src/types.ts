@@ -10,8 +10,9 @@ export interface MoltbotEnv {
   // AI Gateway configuration (preferred)
   AI_GATEWAY_API_KEY?: string; // API key for the provider configured in AI Gateway
   AI_GATEWAY_BASE_URL?: string; // AI Gateway URL (e.g., https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/anthropic)
-  // Legacy direct provider configuration (fallback)
+  // Direct provider configuration (fallback)
   ANTHROPIC_API_KEY?: string;
+  ANTHROPIC_OAUTH_TOKEN?: string; // OAuth token for Claude Pro/Max subscriptions (from `claude setup-token`)
   ANTHROPIC_BASE_URL?: string;
   OPENAI_API_KEY?: string;
   MOLTBOT_GATEWAY_TOKEN?: string; // Gateway token (mapped to CLAWDBOT_GATEWAY_TOKEN for container)

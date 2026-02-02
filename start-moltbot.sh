@@ -94,11 +94,25 @@ else
     echo "R2 not mounted, starting fresh"
 fi
 
-# Restore skills from R2 backup if available (only if R2 is newer)
+# Restore full workspace from R2 backup if available (only if R2 is newer)
+# This includes memory, tools, custom files - everything the agent creates
+WORKSPACE_DIR="/root/clawd"
+if [ -d "$BACKUP_DIR/clawd" ] && [ "$(ls -A $BACKUP_DIR/clawd 2>/dev/null)" ]; then
+    if should_restore_from_r2; then
+        echo "Restoring workspace from $BACKUP_DIR/clawd..."
+        mkdir -p "$WORKSPACE_DIR"
+        cp -a "$BACKUP_DIR/clawd/." "$WORKSPACE_DIR/"
+        echo "Restored workspace from R2 backup"
+    fi
+fi
+
+# Restore skills from R2 backup if available (legacy path, only if R2 is newer)
+# Note: Skills are also included in the workspace backup above, but we keep this
+# for backwards compatibility with existing backups that only have /skills/
 SKILLS_DIR="/root/clawd/skills"
 if [ -d "$BACKUP_DIR/skills" ] && [ "$(ls -A $BACKUP_DIR/skills 2>/dev/null)" ]; then
     if should_restore_from_r2; then
-        echo "Restoring skills from $BACKUP_DIR/skills..."
+        echo "Restoring skills from $BACKUP_DIR/skills (legacy path)..."
         mkdir -p "$SKILLS_DIR"
         cp -a "$BACKUP_DIR/skills/." "$SKILLS_DIR/"
         echo "Restored skills from R2 backup"
@@ -187,8 +201,14 @@ if (process.env.TELEGRAM_BOT_TOKEN) {
     config.channels.telegram = config.channels.telegram || {};
     config.channels.telegram.botToken = process.env.TELEGRAM_BOT_TOKEN;
     config.channels.telegram.enabled = true;
-    config.channels.telegram.dm = config.channels.telegram.dm || {};
-    config.channels.telegram.dmPolicy = process.env.TELEGRAM_DM_POLICY || 'pairing';
+    const telegramDmPolicy = process.env.TELEGRAM_DM_POLICY || 'pairing';
+    config.channels.telegram.dmPolicy = telegramDmPolicy;
+    // "open" policy requires allowFrom: ["*"]
+    if (telegramDmPolicy === 'open') {
+        config.channels.telegram.allowFrom = ['*'];
+    }
+    // Clean up invalid 'dm' sub-object from previous versions
+    delete config.channels.telegram.dm;
 }
 
 // Discord configuration
@@ -196,8 +216,9 @@ if (process.env.DISCORD_BOT_TOKEN) {
     config.channels.discord = config.channels.discord || {};
     config.channels.discord.token = process.env.DISCORD_BOT_TOKEN;
     config.channels.discord.enabled = true;
-    config.channels.discord.dm = config.channels.discord.dm || {};
-    config.channels.discord.dm.policy = process.env.DISCORD_DM_POLICY || 'pairing';
+    config.channels.discord.dmPolicy = process.env.DISCORD_DM_POLICY || 'pairing';
+    // Clean up invalid 'dm' sub-object from previous versions
+    delete config.channels.discord.dm;
 }
 
 // Slack configuration
@@ -215,13 +236,21 @@ if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_APP_TOKEN) {
 const baseUrl = (process.env.AI_GATEWAY_BASE_URL || process.env.ANTHROPIC_BASE_URL || '').replace(/\/+$/, '');
 const isOpenAI = baseUrl.endsWith('/openai');
 
+// Build headers for authenticated AI Gateway (BYOK scenario)
+// When both a direct API key and AI_GATEWAY_API_KEY are set, the gateway key
+// is passed via cf-aig-authorization header for AI Gateway authentication
+const headers = {};
+if (process.env.AI_GATEWAY_API_KEY) {
+    headers['cf-aig-authorization'] = 'Bearer ' + process.env.AI_GATEWAY_API_KEY;
+}
+
 if (isOpenAI) {
     // Create custom openai provider config with baseUrl override
     // Omit apiKey so moltbot falls back to OPENAI_API_KEY env var
     console.log('Configuring OpenAI provider with base URL:', baseUrl);
     config.models = config.models || {};
     config.models.providers = config.models.providers || {};
-    config.models.providers.openai = {
+    const openaiConfig = {
         baseUrl: baseUrl,
         api: 'openai-responses',
         models: [
@@ -230,6 +259,8 @@ if (isOpenAI) {
             { id: 'gpt-4.5-preview', name: 'GPT-4.5 Preview', contextWindow: 128000 },
         ]
     };
+    if (Object.keys(headers).length > 0) openaiConfig.headers = headers;
+    config.models.providers.openai = openaiConfig;
     // Add models to the allowlist so they appear in /models
     config.agents.defaults.models = config.agents.defaults.models || {};
     config.agents.defaults.models['openai/gpt-5.2'] = { alias: 'GPT-5.2' };
@@ -249,9 +280,13 @@ if (isOpenAI) {
             { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', contextWindow: 200000 },
         ]
     };
+    if (Object.keys(headers).length > 0) providerConfig.headers = headers;
     // Include API key in provider config if set (required when using custom baseUrl)
     if (process.env.ANTHROPIC_API_KEY) {
         providerConfig.apiKey = process.env.ANTHROPIC_API_KEY;
+    } else if (process.env.ANTHROPIC_OAUTH_TOKEN) {
+        providerConfig.auth = 'token';
+        providerConfig.apiKey = process.env.ANTHROPIC_OAUTH_TOKEN;
     }
     config.models.providers.anthropic = providerConfig;
     // Add models to the allowlist so they appear in /models

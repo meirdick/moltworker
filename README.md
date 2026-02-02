@@ -71,6 +71,9 @@ npm install
 # Set your API key (direct Anthropic access)
 npx wrangler secret put ANTHROPIC_API_KEY
 
+# Or use a Claude Pro/Max subscription token (from `claude setup-token`)
+# npx wrangler secret put ANTHROPIC_OAUTH_TOKEN
+
 # Or use AI Gateway instead (see "Optional: Cloudflare AI Gateway" below)
 # npx wrangler secret put AI_GATEWAY_API_KEY
 # npx wrangler secret put AI_GATEWAY_BASE_URL

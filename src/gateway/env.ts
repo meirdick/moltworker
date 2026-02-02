@@ -13,22 +13,29 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   const normalizedBaseUrl = env.AI_GATEWAY_BASE_URL?.replace(/\/+$/, '');
   const isOpenAIGateway = normalizedBaseUrl?.endsWith('/openai');
 
-  // AI Gateway vars take precedence
-  // Map to the appropriate provider env var based on the gateway endpoint
+  // Direct provider keys pass through first
+  if (env.ANTHROPIC_API_KEY) envVars.ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY;
+  if (env.ANTHROPIC_OAUTH_TOKEN) envVars.ANTHROPIC_OAUTH_TOKEN = env.ANTHROPIC_OAUTH_TOKEN;
+  if (env.OPENAI_API_KEY) envVars.OPENAI_API_KEY = env.OPENAI_API_KEY;
+
+  // AI Gateway key handling:
+  // - If no direct key exists for the target provider, use gateway key as the provider key
+  // - If a direct key already exists, pass gateway key as AI_GATEWAY_API_KEY for
+  //   use in cf-aig-authorization header (BYOK authenticated gateway)
   if (env.AI_GATEWAY_API_KEY) {
     if (isOpenAIGateway) {
-      envVars.OPENAI_API_KEY = env.AI_GATEWAY_API_KEY;
+      if (!envVars.OPENAI_API_KEY) {
+        envVars.OPENAI_API_KEY = env.AI_GATEWAY_API_KEY;
+      } else {
+        envVars.AI_GATEWAY_API_KEY = env.AI_GATEWAY_API_KEY;
+      }
     } else {
-      envVars.ANTHROPIC_API_KEY = env.AI_GATEWAY_API_KEY;
+      if (!envVars.ANTHROPIC_API_KEY && !envVars.ANTHROPIC_OAUTH_TOKEN) {
+        envVars.ANTHROPIC_API_KEY = env.AI_GATEWAY_API_KEY;
+      } else {
+        envVars.AI_GATEWAY_API_KEY = env.AI_GATEWAY_API_KEY;
+      }
     }
-  }
-
-  // Fall back to direct provider keys
-  if (!envVars.ANTHROPIC_API_KEY && env.ANTHROPIC_API_KEY) {
-    envVars.ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY;
-  }
-  if (!envVars.OPENAI_API_KEY && env.OPENAI_API_KEY) {
-    envVars.OPENAI_API_KEY = env.OPENAI_API_KEY;
   }
 
   // Pass base URL (used by start-moltbot.sh to determine provider)
