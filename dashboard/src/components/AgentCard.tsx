@@ -62,7 +62,7 @@ export default function AgentCard({
             style={{ background: isActive ? '#22C55E' : '#9E9A90' }}
           />
           <span style={{ fontSize: 11, fontWeight: 500, color: isActive ? '#16A34A' : '#9E9A90' }}>
-            {isActive ? 'WORKING' : agent.status === 'idle' ? 'IDLE' : 'OFFLINE'}
+            {isActive ? 'ACTIVE' : agent.status === 'idle' ? 'IDLE' : 'OFFLINE'}
           </span>
         </div>
       </div>

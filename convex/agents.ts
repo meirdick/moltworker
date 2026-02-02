@@ -49,6 +49,15 @@ export const heartbeat = mutation({
 
 export const list = query({
   handler: async (ctx) => {
-    return await ctx.db.query("agents").collect();
+    const agents = await ctx.db.query("agents").collect();
+    const now = Date.now();
+    // Derive status from lastSeen: active <5min, idle <30min, offline >30min
+    return agents.map((agent) => {
+      const age = now - (agent.lastSeen || 0);
+      let status = agent.status;
+      if (age > 30 * 60 * 1000) status = "offline";
+      else if (age > 5 * 60 * 1000) status = "idle";
+      return { ...agent, status };
+    });
   },
 });
