@@ -63,4 +63,10 @@ publicRoutes.get('/_admin/assets/*', async (c) => {
   return c.env.ASSETS.fetch(new Request(assetUrl.toString(), c.req.raw));
 });
 
+// GET /mission/assets/* - Mission Control dashboard static assets (CSS, JS need to load for login redirect)
+// Assets are built to dist/client/mission/ with base "/mission/"
+publicRoutes.get('/mission/assets/*', async (c) => {
+  return c.env.ASSETS.fetch(new Request(c.req.url, c.req.raw));
+});
+
 export { publicRoutes };
